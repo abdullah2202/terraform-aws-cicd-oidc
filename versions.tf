@@ -8,7 +8,7 @@ terraform {
   }
 
   backend "s3" {
-    bucket         = "abdullah2202-cicd-terraform-bucket" # Replace with a globally unique name for your state bucket
+    bucket         = "abdullah2202-cicd-terraform-state-bucket" # Replace with a globally unique name for your state bucket
     key            = "terraform.tfstate"
     region         = "us-east-1" # Must be the same region as your resources or where you want to store state
     encrypt        = true
