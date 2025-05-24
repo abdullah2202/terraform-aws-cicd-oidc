@@ -1,0 +1,71 @@
+# .github/workflows/terraform.yml
+name: Terraform AWS Deployment
+
+on:
+  pull_request:
+    branches:
+      - main # Trigger on pull requests targeting the main branch
+    types: [opened, synchronize, reopened] # When PR is opened, updated, or reopened
+  push:
+    branches:
+      - main # Trigger on direct pushes to the main branch
+
+env:
+  AWS_REGION: us-east-1 # Your AWS region
+
+jobs:
+  terraform:
+    name: 'Terraform Plan/Apply'
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write # Required for requesting the OIDC token
+      contents: read  # Required for actions/checkout
+      pull-requests: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::056200464250:role/GitHubActionsTerraformRole # Replace with your IAM Role ARN
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.x.x # Or a specific version like 1.5.7
+
+      - name: Terraform Init
+        id: init
+        run: terraform init
+
+      - name: Terraform Plan
+        id: plan
+        if: github.event_name == 'pull_request'
+        run: terraform plan -no-color -input=false
+        continue-on-error: true # Allow plan to fail if there are errors, still show output
+
+      - name: Update Pull Request with Terraform Plan
+        uses: actions/github-script@v6
+        if: github.event_name == 'pull_request'
+        with:
+          script: |
+            const output = `#### Terraform Plan 📖
+            \`\`\`terraform
+            ${process.env.PLAN}
+            \`\`\`
+            `;
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: output
+            })
+        env:
+          PLAN: "${{ steps.plan.outputs.stdout }}"
+
+      - name: Terraform Apply
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: terraform apply -auto-approve -input=false
