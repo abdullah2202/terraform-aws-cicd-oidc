@@ -20,6 +20,7 @@ jobs:
     permissions:
       id-token: write # Required for requesting the OIDC token
       contents: read  # Required for actions/checkout
+      pull-requests: write
 
     steps:
       - name: Checkout repository
